@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a3a5c">
+  <title>بنك أسئلة الثقافة المالية | حسين علقم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="hdr-icon">📚</div>
+    <h1>بنك أسئلة الثقافة المالية</h1>
+    <p>إعداد المشرف التربوي: <strong>حسين علقم</strong></p>
+  </header>
+
+  <!-- NAVBAR (hidden on start) -->
+  <div id="navbar" style="display:none">
+    <button id="btn-back" onclick="goBack()" style="display:none">→ رجوع</button>
+    <span class="nb-space"></span>
+    <button id="btn-home" onclick="goHome()" style="display:none">🏠 الرئيسية</button>
+  </div>
+
+  <!-- PAGE: START -->
+  <div id="pg-start" class="pg">
+    <div class="welcome">
+      <div class="w-icon">🎓</div>
+      <div class="w-title">مرحباً بك في منصة الاختبارات الذكية</div>
+      <div class="w-sub">اختر نمط الاختبار للبدء</div>
+    </div>
+    <div class="mode-row">
+      <button class="mbtn active" id="btn-train" onclick="setMode('train')">
+        <span class="mb-icon">📖</span>
+        <span class="mb-name">تدريبي</span>
+        <span class="mb-desc">الإجابة تظهر فوراً</span>
+      </button>
+      <button class="mbtn" id="btn-exam" onclick="setMode('exam')">
+        <span class="mb-icon">📝</span>
+        <span class="mb-name">امتحاني</span>
+        <span class="mb-desc">النتيجة في النهاية</span>
+      </button>
+    </div>
+    <button class="btn-enter" onclick="startApp()">ابدأ الآن ←</button>
+  </div>
+
+  <!-- PAGE: HOME -->
+  <div id="pg-home" class="pg" style="display:none"></div>
+
+  <!-- PAGE: LESSONS -->
+  <div id="pg-lessons" class="pg" style="display:none"></div>
+
+  <!-- PAGE: UNITS -->
+  <div id="pg-units" class="pg" style="display:none"></div>
+
+  <!-- PAGE: EXAMS -->
+  <div id="pg-exams" class="pg" style="display:none"></div>
+
+  <!-- PAGE: QUIZ -->
+  <div id="pg-quiz" class="pg" style="display:none"></div>
+
+  <!-- PAGE: RESULT -->
+  <div id="pg-result" class="pg" style="display:none"></div>
+
+</div>
+
+<script src="questions.js"></script>
+<script src="script.js"></script>
+<script>
+  // Show start page on load
+  showPage('start');
+</script>
+</body>
+</html>
