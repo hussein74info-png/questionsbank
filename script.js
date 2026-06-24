@@ -372,6 +372,15 @@ function launchExamQuiz(examKey, title) {
 // ══════════════════════════════════════════════
 //  محرك الاختبار
 // ══════════════════════════════════════════════
+// يُعيد الخيارات الصالحة + مؤشر الإجابة الصحيحة مُعاد ضبطه ليطابق الخيارات بعد التصفية
+function validInfo(q){
+  var opts=q.options||[];
+  var v=[],idxMap=[];
+  for(var k=0;k<opts.length;k++){ if(opts[k]&&String(opts[k]).trim()){ v.push(opts[k]); idxMap.push(k); } }
+  var a=idxMap.indexOf(q.answer); if(a===-1) a=0;
+  return {opts:v, answerIdx:a};
+}
+
 function renderQuiz() {
   var modeTxt = currentMode==='exam' ? '<i class="fas fa-pen-fancy"></i> امتحاني' : '<i class="fas fa-book-open"></i> تدريبي';
   var html =
@@ -383,11 +392,11 @@ function renderQuiz() {
     '<div class="qprog-txt" id="qptxt">0 / '+currentQuiz.length+'</div></div><div id="qarea">';
 
   currentQuiz.forEach(function(q,i){
-    var validOpts = (q.options||[]).filter(function(o){return o&&o.trim();});
+    var vi = validInfo(q);
     html += '<div class="qcard" id="qcard-'+i+'">' +
       '<div class="qcard-top"><span class="qbadge">س'+(i+1)+'</span><span class="qmeta">'+(q.lesson||'')+'</span></div>' +
       '<div class="qtext">'+q.text+'</div><div class="qopts">';
-    validOpts.forEach(function(opt,j){
+    vi.opts.forEach(function(opt,j){
       html += '<div class="qopt" id="qopt-'+i+'-'+j+'" onclick="pick('+i+','+j+')">' +
         '<span class="qoc">'+LBL[j]+'</span><span class="qot">'+opt+'</span></div>';
     });
@@ -403,31 +412,32 @@ function renderQuiz() {
 
 function pick(qi, oi) {
   var q = currentQuiz[qi];
-  var validOpts = (q.options||[]).filter(function(o){return o&&o.trim();});
+  var vi = validInfo(q);
+  var correctIdx = vi.answerIdx;
   if (currentMode==='train' && userAnswers[qi]!==undefined) return;
   userAnswers[qi] = oi;
 
-  for (var j=0; j<validOpts.length; j++) {
+  for (var j=0; j<vi.opts.length; j++) {
     var el = document.getElementById('qopt-'+qi+'-'+j);
     if (el) el.className = 'qopt';
   }
 
   if (currentMode==='train') {
-    for (var j=0; j<validOpts.length; j++) {
+    for (var j=0; j<vi.opts.length; j++) {
       var el = document.getElementById('qopt-'+qi+'-'+j);
       if (!el) continue;
       el.classList.add('locked');
-      if (j===q.answer) el.classList.add('correct');
-      else if (j===oi && oi!==q.answer) el.classList.add('wrong');
+      if (j===correctIdx) el.classList.add('correct');
+      else if (j===oi && oi!==correctIdx) el.classList.add('wrong');
     }
     var card = document.getElementById('qcard-'+qi);
-    if (card) card.classList.add(oi===q.answer ? 'q-correct' : 'q-wrong');
+    if (card) card.classList.add(oi===correctIdx ? 'q-correct' : 'q-wrong');
     var fb = document.getElementById('qfb-'+qi);
     if (fb) {
       fb.style.display='block';
-      var ok = oi===q.answer;
+      var ok = oi===correctIdx;
       fb.className = 'qfb '+(ok?'fb-ok':'fb-err');
-      fb.innerHTML = ok ? '✅ إجابة صحيحة! أحسنت.' : '❌ خطأ — الصحيح: <strong>'+LBL[q.answer]+' — '+validOpts[q.answer]+'</strong>';
+      fb.innerHTML = ok ? '✅ إجابة صحيحة! أحسنت.' : '❌ خطأ — الصحيح: <strong>'+LBL[correctIdx]+' — '+vi.opts[correctIdx]+'</strong>';
     }
   } else {
     var sel = document.getElementById('qopt-'+qi+'-'+oi);
@@ -464,7 +474,7 @@ function updQNav() {
   currentQuiz.forEach(function(q,i){
     var cls = '';
     if (userAnswers[i]===undefined) cls = '';
-    else if (userAnswers[i]===q.answer) cls = 'nd-correct';
+    else if (userAnswers[i]===validInfo(q).answerIdx) cls = 'nd-correct';
     else cls = 'nd-wrong';
     html += '<div class="qnav-dot '+cls+'" onclick="jumpToQ('+i+')">'+(i+1)+'</div>';
   });
@@ -484,7 +494,7 @@ function showResults() {
   var total=currentQuiz.length, correct=0, wrong=0, skipped=0;
   currentQuiz.forEach(function(q,i){
     if (userAnswers[i]===undefined) skipped++;
-    else if (userAnswers[i]===q.answer) correct++;
+    else if (userAnswers[i]===validInfo(q).answerIdx) correct++;
     else wrong++;
   });
   var pct = Math.round(correct/total*100);
@@ -552,7 +562,7 @@ function buildAnalytics() {
       unitMap[uid]={name:uname,total:0,correct:0};
     }
     unitMap[uid].total++;
-    if(userAnswers[i]===q.answer) unitMap[uid].correct++;
+    if(userAnswers[i]===validInfo(q).answerIdx) unitMap[uid].correct++;
   });
   var keys=Object.keys(unitMap);
   if(keys.length<=1) return '';
@@ -575,15 +585,16 @@ function buildAnalytics() {
 function buildReview() {
   var html='<div class="review-box"><div class="sec-title">📋 مراجعة الإجابات</div>';
   currentQuiz.forEach(function(q,i){
-    var ans=userAnswers[i], skip=ans===undefined, ok=!skip&&ans===q.answer;
-    var validOpts=(q.options||[]).filter(function(o){return o&&o.trim();});
+    var vi = validInfo(q);
+    var correctIdx = vi.answerIdx;
+    var ans=userAnswers[i], skip=ans===undefined, ok=!skip&&ans===correctIdx;
     var sc=skip?'rs':ok?'rok':'rerr';
     var st=skip?'⏭ لم تُجب':ok?'✅ صحيحة':'❌ خاطئة';
     html+='<div class="rcard '+sc+'"><div class="rcard-hdr"><span class="rbadge">س'+(i+1)+'</span><span class="rstatus">'+st+'</span></div>' +
       '<div class="rqtext">'+q.text+'</div><div class="ropts">';
-    validOpts.forEach(function(o,j){
-      var lc=j===q.answer?'rlbl-ok':j===ans&&!ok&&!skip?'rlbl-err':'';
-      var tc=j===q.answer?'color:var(--success);font-weight:700':j===ans&&!ok?'color:var(--error)':'';
+    vi.opts.forEach(function(o,j){
+      var lc=j===correctIdx?'rlbl-ok':j===ans&&!ok&&!skip?'rlbl-err':'';
+      var tc=j===correctIdx?'color:var(--success);font-weight:700':j===ans&&!ok?'color:var(--error)':'';
       html+='<div class="ropt"><span class="rlbl '+lc+'">'+LBL[j]+'</span><span style="'+tc+'">'+o+'</span></div>';
     });
     html+='</div><div class="rmeta">📌 '+(q.lesson||'')+'</div></div>';

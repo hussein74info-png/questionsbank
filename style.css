@@ -3,6 +3,9 @@
   --pr:#1a3a5c;--pl:#2d6096;--gold:#c8a84b;--gr:#27ae60;--rd:#e74c3c;
   --f1:#1a5276;--f1b:#d4e8f5;--f2:#1e6b4a;--f2b:#d4f0e6;
   --bd:#e0dbd0;--bg:#f4f1ea;--wh:#fff;--mu:#6a7a8a;
+  /* الأسماء البديلة المستخدمة في script.js */
+  --success:var(--gr);--warning:var(--gold);--error:var(--rd);
+  --text2:var(--mu);--muted:var(--mu);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);direction:rtl;min-height:100vh;}
@@ -21,7 +24,14 @@ header strong{color:#e8c96a;}
 /* NAVBAR */
 #navbar{display:flex;align-items:center;padding:8px 14px;background:#fff;
   border-bottom:1px solid var(--bd);gap:8px;position:sticky;top:0;z-index:10;}
-.nb-space{flex:1;}
+.nb-title{font-size:13px;font-weight:700;color:var(--pr);flex:1;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nb-space{flex:0;}
+.nb-qnav{display:flex;align-items:center;gap:5px;
+  border:1.5px solid var(--bd);border-radius:9px;padding:7px 12px;
+  font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;color:var(--pr);
+  background:#fff;cursor:pointer;}
+.nb-qnav:active{background:var(--f1b);}
 #btn-back,#btn-home{display:none;align-items:center;gap:5px;
   border:1.5px solid var(--bd);border-radius:9px;padding:7px 14px;
   font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
@@ -208,3 +218,94 @@ header strong{color:#e8c96a;}
   .menu-grid,.sem-cards,.units-grid,.stats3{grid-template-columns:1fr 1fr;}
   .ropts{grid-template-columns:1fr;}
 }
+
+/* ══════════════════════════════════════════════
+   فئات إضافية مفقودة (تستخدمها script.js)
+   ══════════════════════════════════════════════ */
+
+/* زر تغيير النمط في الصفحة الرئيسية */
+.btn-change{background:none;border:1px solid var(--f1);border-radius:7px;padding:4px 10px;
+  font-family:'Tajawal',sans-serif;font-size:11px;font-weight:700;color:var(--f1);cursor:pointer;}
+.btn-change:active{background:var(--f1);color:#fff;}
+
+/* صناديق "لا توجد بيانات" */
+.no-data-box{background:#fff;border:2px dashed var(--bd);border-radius:14px;
+  padding:26px 16px;text-align:center;color:var(--mu);}
+.no-data-box i{font-size:36px;color:var(--gold);margin-bottom:10px;display:block;}
+.no-data-box p{font-size:14px;font-weight:700;color:var(--pr);line-height:1.6;}
+
+/* شارات النماذج داخل بطاقات الوحدات */
+.ucm-models{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.model-badge{display:inline-block;background:rgba(255,255,255,.25);color:#fff;
+  border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;
+  transition:background .15s;}
+.model-badge:active{background:rgba(255,255,255,.45);}
+.model-badge.empty{background:rgba(0,0,0,.12);cursor:default;}
+
+/* بطاقات النماذج الوزارية */
+.min-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.min-card{background:linear-gradient(135deg,#a07010,#e8c96a);color:#fff;
+  border-radius:14px;padding:18px 12px;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;min-height:115px;}
+.min-card:active{transform:scale(.97);}
+.min-ic{font-size:24px;}
+.min-name{font-size:13px;font-weight:800;text-align:center;}
+.min-info{font-size:10px;opacity:.9;text-align:center;line-height:1.5;}
+
+/* حالات بطاقة السؤال في النمط التدريبي */
+.qcard.q-correct{border-color:var(--gr);background:#f4fbf6;}
+.qcard.q-wrong{border-color:var(--rd);background:#fdf5f5;}
+.qopt.locked{cursor:default;}
+.qopt.locked:active{transform:none;}
+
+/* خريطة الأسئلة - overlay */
+.qnav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;
+  display:flex;justify-content:center;align-items:flex-end;
+  opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;}
+.qnav-overlay.open{opacity:1;visibility:visible;}
+.qnav-panel{background:#fff;width:100%;max-width:780px;border-radius:18px 18px 0 0;
+  padding:16px 14px 22px;transform:translateY(100%);transition:transform .3s;max-height:75vh;overflow:auto;}
+.qnav-overlay.open .qnav-panel{transform:translateY(0);}
+.qnav-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.qnav-title{font-size:15px;font-weight:800;color:var(--pr);}
+.qnav-close{background:none;border:none;font-size:18px;color:var(--mu);cursor:pointer;padding:4px 8px;}
+.qnav-legend{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--mu);margin-bottom:12px;flex-wrap:wrap;}
+.qnav-legend .lg{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:4px;}
+.qnav-legend .lg-c{background:var(--gr);}
+.qnav-legend .lg-w{background:var(--rd);}
+.qnav-legend .lg-s{background:#eee;}
+.qnav-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.qnav-dot{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:9px;border:2px solid var(--bd);background:#fff;font-size:13px;font-weight:700;
+  color:var(--pr);cursor:pointer;transition:all .15s;}
+.qnav-dot:active{transform:scale(.94);}
+.qnav-dot.nd-correct{border-color:var(--gr);background:#d4edda;color:var(--gr);}
+.qnav-dot.nd-wrong{border-color:var(--rd);background:#f8d7da;color:var(--rd);}
+@media(max-width:400px){.qnav-grid{grid-template-columns:repeat(5,1fr);}}
+
+/* دائرة النتيجة في صفحة result */
+.score-svg{position:relative;width:150px;height:150px;margin:0 auto 12px;}
+.score-svg svg{width:100%;height:100%;transform:rotate(-90deg);}
+.score-bg-c{fill:none;stroke:rgba(255,255,255,.18);stroke-width:10;}
+.score-fill-c{fill:none;stroke:#fff;stroke-width:10;stroke-linecap:round;
+  transition:stroke-dashoffset 1.4s ease;}
+.score-pct-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;}
+.score-pct-num{font-size:38px;}
+.score-pct-sign{font-size:18px;margin-right:2px;}
+
+/* صناديق التنبيه (toast) */
+.toast-box{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;
+  pointer-events:none;width:90%;max-width:420px;}
+.toast{padding:11px 18px;border-radius:11px;font-size:13px;font-weight:700;
+  font-family:'Tajawal',sans-serif;text-align:center;opacity:0;transform:translateY(15px);
+  transition:opacity .3s,transform .3s;box-shadow:0 6px 24px rgba(0,0,0,.18);
+  pointer-events:auto;max-width:100%;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast-warn{background:#fff9e6;color:#8a6d1a;border:1.5px solid var(--gold);}
+.toast-err{background:#fde2e2;color:#a02323;border:1.5px solid var(--rd);}
+.toast-ok{background:#d4edda;color:#1e6b4a;border:1.5px solid var(--gr);}
+
+/* تحسين بسيط لتنسيق العناوين داخل البطاقات في النمط التدريبي */
+.qfb strong{font-weight:800;}

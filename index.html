@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#1a3a5c">
   <title>بنك أسئلة الثقافة المالية | حسين علقم</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,7 +24,11 @@
   <!-- NAVBAR (hidden on start) -->
   <div id="navbar" style="display:none">
     <button id="btn-back" onclick="goBack()" style="display:none">→ رجوع</button>
+    <span id="nav-title" class="nb-title"></span>
     <span class="nb-space"></span>
+    <button id="qnav-btn" class="nb-qnav" onclick="toggleQNav()" style="display:none">
+      <i class="fas fa-th"></i> خريطة
+    </button>
     <button id="btn-home" onclick="goHome()" style="display:none">🏠 الرئيسية</button>
   </div>
 
@@ -50,24 +55,60 @@
   </div>
 
   <!-- PAGE: HOME -->
-  <div id="pg-home" class="pg" style="display:none"></div>
+  <div id="pg-home" class="pg" style="display:none">
+    <div id="home-inner"></div>
+  </div>
 
   <!-- PAGE: LESSONS -->
-  <div id="pg-lessons" class="pg" style="display:none"></div>
+  <div id="pg-lessons" class="pg" style="display:none">
+    <div id="lessons-inner"></div>
+  </div>
 
   <!-- PAGE: UNITS -->
-  <div id="pg-units" class="pg" style="display:none"></div>
+  <div id="pg-units" class="pg" style="display:none">
+    <div id="units-inner"></div>
+  </div>
+
+  <!-- PAGE: MINISTERIAL -->
+  <div id="pg-ministerial" class="pg" style="display:none">
+    <div id="ministerial-inner"></div>
+  </div>
 
   <!-- PAGE: EXAMS -->
-  <div id="pg-exams" class="pg" style="display:none"></div>
+  <div id="pg-exams" class="pg" style="display:none">
+    <div id="exams-inner"></div>
+  </div>
 
   <!-- PAGE: QUIZ -->
-  <div id="pg-quiz" class="pg" style="display:none"></div>
+  <div id="pg-quiz" class="pg" style="display:none">
+    <div id="quiz-inner"></div>
+  </div>
 
   <!-- PAGE: RESULT -->
-  <div id="pg-result" class="pg" style="display:none"></div>
+  <div id="pg-result" class="pg" style="display:none">
+    <div id="result-inner"></div>
+  </div>
 
 </div>
+
+<!-- QUESTION NAVIGATION OVERLAY -->
+<div id="qnav-overlay" class="qnav-overlay">
+  <div class="qnav-panel">
+    <div class="qnav-head">
+      <span class="qnav-title">خريطة الأسئلة</span>
+      <button class="qnav-close" onclick="toggleQNav()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="qnav-legend">
+      <span class="lg lg-c"></span> صحيحة
+      <span class="lg lg-w"></span> خاطئة
+      <span class="lg lg-s"></span> لم تُجب
+    </div>
+    <div id="qnav-grid" class="qnav-grid"></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-box" class="toast-box"></div>
 
 <script src="questions.js"></script>
 <script src="script.js"></script>
