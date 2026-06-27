@@ -82,6 +82,70 @@ function saveOverride(questionId, patch){
 function clearAllOverrides(){
   localStorage.removeItem('qbank_overrides');
   localStorage.removeItem('qbank_additions');
+  localStorage.removeItem('qbank_deletions');
+}
+
+// ══════════════════════════════════════════════
+//  حذف الأسئلة (Delete Questions)
+// ══════════════════════════════════════════════
+
+// تطبيق قائمة المحذوفات المحفوظة محلياً على البنك
+function applyLocalDeletions(){
+  try {
+    var raw = localStorage.getItem('qbank_deletions');
+    if (!raw) return;
+    var deletions = JSON.parse(raw);
+    if (!Array.isArray(deletions)) return;
+    var removed = 0;
+    // إزالة الأسئلة المحذوفة من البنك
+    for (var i = bank.length - 1; i >= 0; i--){
+      if (deletions.indexOf(bank[i].id) !== -1){
+        bank.splice(i, 1);
+        removed++;
+      }
+    }
+    // إعادة بناء الفهرس
+    bankIndexById = buildBankIndex();
+    if (removed > 0) console.log('[Editor] تم تطبيق ' + removed + ' حذف محفوظ محلياً');
+  } catch(e){ console.warn('[Editor] فشل تطبيق المحذوفات المحلية:', e); }
+}
+
+// حذف سؤال (من نافذة التحرير)
+function deleteCurrentQuestion(questionId){
+  if (!editorMode) return;
+  var idx = bankIndexById[questionId];
+  if (idx === undefined){ toast('السؤال غير موجود', 'err'); return; }
+  var q = bank[idx];
+
+  // تأكيد الحذف
+  var confirmMsg = 'هل أنت متأكد من حذف هذا السؤال؟\n\n' +
+    'السؤال: ' + q.text.substring(0, 100) + (q.text.length > 100 ? '...' : '') + '\n\n' +
+    'سيتم حذفه من:\n' +
+    '• اختبارات الدروس\n' +
+    '• نماذج الوحدة ' + q.unit + '\n' +
+    '• النماذج الوزارية\n\n' +
+    'للتراجع عن الحذف لاحقاً، استخدم زر "تصدير البنك" ثم أعد رفع الملف.';
+
+  if (!window.confirm(confirmMsg)) return;
+
+  // إزالة من البنك في الذاكرة
+  bank.splice(idx, 1);
+  bankIndexById = buildBankIndex();
+
+  // حفظ في قائمة المحذوفات
+  var raw = localStorage.getItem('qbank_deletions');
+  var deletions = raw ? JSON.parse(raw) : [];
+  if (!Array.isArray(deletions)) deletions = [];
+  if (deletions.indexOf(questionId) === -1){
+    deletions.push(questionId);
+    localStorage.setItem('qbank_deletions', JSON.stringify(deletions));
+  }
+
+  closeEditorEdit();
+  toast('🗑️ تم حذف السؤال رقم ' + questionId, 'ok');
+
+  // إعادة عرض الصفحة الحالية
+  refreshCurrentPage();
 }
 
 // ══════════════════════════════════════════════
@@ -335,19 +399,28 @@ function openEditorEdit(questionId){
   if (idx === undefined){ toast('السؤال غير موجود', 'err'); return; }
   var q = bank[idx];
 
+  // عدد الخيارات الحالي + ملاحظة إن كان أقل من 4
+  var currentOptsCount = (q.options || []).length;
+  var showAddHint = currentOptsCount < 4;
+
   var body =
     '<div class="ed-field">' +
       '<label class="ed-label">نص السؤال</label>' +
       '<textarea id="ed-text" class="ed-textarea" rows="3">' + escHtml(q.text) + '</textarea>' +
     '</div>' +
     '<div class="ed-field">' +
-      '<label class="ed-label">الخيارات (الإجابة الصحيحة محددة)</label>' +
-      '<div class="ed-opts">';
-  for (var j = 0; j < (q.options || []).length; j++){
+      '<label class="ed-label">الخيارات (الإجابة الصحيحة محددة)</label>';
+  if (showAddHint){
+    body += '<p class="ed-add-hint"><i class="fas fa-lightbulb"></i> هذا السؤال يحتوي على ' + currentOptsCount + ' خيارات فقط — املأ الخيارات الفارغة لإكمالها إلى 4.</p>';
+  }
+  body += '<div class="ed-opts">';
+  // عرض 4 حقول دائماً: الخيارات الموجودة + حقول فارغة للخيارات الناقصة
+  for (var j = 0; j < 4; j++){
     var isAns = (j === q.answer);
-    body += '<div class="ed-opt-row">' +
+    var optValue = (q.options && q.options[j] !== undefined) ? q.options[j] : '';
+    body += '<div class="ed-opt-row' + (optValue === '' && j >= currentOptsCount ? ' ed-opt-empty' : '') + '">' +
       '<label class="ed-opt-radio"><input type="radio" name="ed-answer" value="' + j + '" ' + (isAns ? 'checked' : '') + '> <span class="ed-opt-lbl">' + LBL[j] + '</span></label>' +
-      '<input type="text" class="ed-opt-input" id="ed-opt-' + j + '" value="' + escHtml(q.options[j] || '') + '">' +
+      '<input type="text" class="ed-opt-input" id="ed-opt-' + j + '" value="' + escHtml(optValue) + '" placeholder="' + (optValue === '' ? 'خيار ' + LBL[j] + ' (فارغ)' : '') + '">' +
       '</div>';
   }
   body += '</div></div>' +
@@ -355,9 +428,10 @@ function openEditorEdit(questionId){
       '<label class="ed-label">الدرس (اختياري)</label>' +
       '<input type="text" id="ed-lesson" class="ed-input" value="' + escHtml(q.lesson || '') + '">' +
     '</div>' +
-    '<div class="ed-actions">' +
+    '<div class="ed-actions ed-actions-3">' +
       '<button class="ed-btn ed-btn-save" onclick="saveEditorEdit(' + questionId + ')">💾 حفظ التعديل</button>' +
       '<button class="ed-btn ed-btn-cancel" onclick="closeEditorEdit()">إلغاء</button>' +
+      '<button class="ed-btn ed-btn-delete" onclick="deleteCurrentQuestion(' + questionId + ')"><i class="fas fa-trash"></i> حذف السؤال</button>' +
     '</div>' +
     '<p class="ed-note"><i class="fas fa-info-circle"></i> التعديل يُحفظ على هذا الجهاز. لتطبيقه نهائياً للموقع، استخدم زر "تصدير البنك" من الشريط العلوي.</p>';
 
@@ -389,24 +463,43 @@ function saveEditorEdit(questionId){
   var textEl = document.getElementById('ed-text');
   var lessonEl = document.getElementById('ed-lesson');
   var newText = textEl ? textEl.value.trim() : q.text;
+  if (!newText){ toast('نص السؤال لا يمكن أن يكون فارغاً', 'err'); textEl.focus(); return; }
   var newLesson = lessonEl ? lessonEl.value.trim() : (q.lesson || '');
 
-  // قراءة الخيارات
-  var newOpts = [];
-  for (var j = 0; j < (q.options || []).length; j++){
-    var el = document.getElementById('ed-opt-' + j);
-    newOpts.push(el ? el.value : '');
-  }
-  // قراءة الإجابة الصحيحة
+  // قراءة الإجابة الصحيحة المختارة (قبل تصفية الخيارات)
   var radio = document.querySelector('input[name="ed-answer"]:checked');
-  var newAnswer = radio ? parseInt(radio.value, 10) : q.answer;
-  if (isNaN(newAnswer) || newAnswer < 0 || newAnswer >= newOpts.length) newAnswer = q.answer;
+  var selectedAnswerIdx = radio ? parseInt(radio.value, 10) : q.answer;
+  if (isNaN(selectedAnswerIdx) || selectedAnswerIdx < 0 || selectedAnswerIdx >= 4) selectedAnswerIdx = 0;
 
-  // التحقق: لا يمكن أن يكون هناك خيار فارغ في موقع الإجابة
-  if (!newOpts[newAnswer] || !newOpts[newAnswer].trim()){
-    toast('الإجابة الصحيحة لا يمكن أن تكون فارغة', 'err');
+  // قراءة الخيارات الأربعة من الحقول (دائماً 4 حقول)
+  var rawOpts = [];
+  for (var j = 0; j < 4; j++){
+    var el = document.getElementById('ed-opt-' + j);
+    rawOpts.push(el ? el.value : '');
+  }
+
+  // قراءة نص الإجابة الصحيحة المختارة (قبل أي تصفية)
+  var correctText = rawOpts[selectedAnswerIdx];
+
+  // التحقق: الإجابة الصحيحة يجب أن تكون غير فارغة
+  if (!correctText || !correctText.trim()){
+    toast('الإجابة الصحيحة (الخيار ' + LBL[selectedAnswerIdx] + ') لا يمكن أن تكون فارغة', 'err');
+    var correctEl = document.getElementById('ed-opt-' + selectedAnswerIdx);
+    if (correctEl) correctEl.focus();
     return;
   }
+
+  // فلترة الخيارات الفارغة من النهاية (للسماح بـ 2 أو 3 أو 4 خيارات)
+  // الخيارات الفارغة في الوسط تبقى كما هي (لن تُعرض في الاختبار بسبب validInfo)
+  var newOpts = rawOpts.slice(); // نسخة
+  // إزالة الخيارات الفارغة من النهاية فقط
+  while (newOpts.length > 2 && (!newOpts[newOpts.length - 1] || !newOpts[newOpts.length - 1].trim())){
+    newOpts.pop();
+  }
+
+  // إعادة حساب فهرس الإجابة الصحيحة بعد الفلترة
+  var newAnswer = newOpts.indexOf(correctText);
+  if (newAnswer === -1) newAnswer = 0; // احتياطي
 
   // تطبيق التعديل على البنك في الذاكرة
   q.text = newText;
@@ -418,7 +511,7 @@ function saveEditorEdit(questionId){
   saveOverride(questionId, { text: newText, options: newOpts, answer: newAnswer, lesson: newLesson });
 
   closeEditorEdit();
-  toast('✅ تم حفظ التعديل', 'ok');
+  toast('✅ تم حفظ التعديل (' + newOpts.length + ' خيارات)', 'ok');
 
   // إعادة عرض الصفحة الحالية لرؤية التغيير
   refreshCurrentPage();
