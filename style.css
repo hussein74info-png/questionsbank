@@ -410,3 +410,35 @@ body.editor-on::before{content:'🔒 وضع المحرر مُفعّل';position:
   .ed-opt-row{flex-wrap:wrap;}
   .ed-opt-radio{width:auto;}
 }
+
+/* ══════════════════════════════════════════════
+   إضافة سؤال جديد (Add Question)
+   ══════════════════════════════════════════════ */
+
+/* حاوية أزرار صندوق إجراءات الدرس */
+.ab-actions{display:flex;flex-direction:column;gap:9px;margin-top:13px;}
+
+/* زر إضافة سؤال (يظهر فقط في وضع المحرر) */
+.btn-add-q{width:100%;padding:12px;background:linear-gradient(135deg,#1e6b4a,#27ae60);
+  color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;
+  font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;}
+.btn-add-q:active{opacity:.9;}
+
+/* شريط معلومات السياق في نافذة الإضافة */
+.ed-ctx-info{background:linear-gradient(135deg,var(--f1b),#eaf3fa);border:1.5px solid var(--f1);
+  border-radius:11px;padding:11px 13px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:7px;}
+.ed-ctx-tag{display:inline-flex;align-items:center;gap:5px;background:#fff;color:var(--pr);
+  border:1px solid var(--bd);border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;}
+.ed-ctx-tag i{color:var(--pl);}
+
+/* تلميح "سيُضاف تلقائياً" */
+.editor-hint{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gr);
+  font-weight:700;background:#eaf7ef;border:1px solid var(--gr);border-radius:8px;
+  padding:8px 11px;margin-bottom:0;}
+.editor-hint i{color:var(--gr);}
+
+@media(max-width:480px){
+  .ed-ctx-info{flex-direction:column;}
+  .ed-ctx-tag{width:100%;justify-content:flex-start;}
+}

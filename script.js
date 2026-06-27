@@ -81,6 +81,166 @@ function saveOverride(questionId, patch){
 // حذف كل التعديلات المحفوظة (reset)
 function clearAllOverrides(){
   localStorage.removeItem('qbank_overrides');
+  localStorage.removeItem('qbank_additions');
+}
+
+// ══════════════════════════════════════════════
+//  إضافة أسئلة جديدة (Add Questions)
+// ══════════════════════════════════════════════
+// سياق الإضافة الحالي (يُملأ عند فتح نافذة "إضافة سؤال")
+var editorAddContext = null;
+
+// البحث عن سياق الدرس في المنهج (sem + unit + unitName)
+function findLessonContext(lessonName){
+  for (var s = 1; s <= 2; s++){
+    var sem = CUR[s];
+    if (!sem || !sem.units) continue;
+    for (var ui = 0; ui < sem.units.length; ui++){
+      var u = sem.units[ui];
+      for (var li = 0; li < u.lessons.length; li++){
+        if (u.lessons[li] === lessonName){
+          return { sem: s, unitId: u.id, unitName: u.name, lesson: u.lessons[li] };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// تطبيق الأسئلة المُضافة محفوظة محلياً على البنك
+function applyLocalAdditions(){
+  try {
+    var raw = localStorage.getItem('qbank_additions');
+    if (!raw) return;
+    var additions = JSON.parse(raw);
+    if (!Array.isArray(additions)) return;
+    var applied = 0;
+    additions.forEach(function(q){
+      // تخطي إذا كان موجوداً بالفعل (مثلاً بعد تصدير البنك وإعادة رفعه)
+      if (bankIndexById[q.id] !== undefined) return;
+      bank.push(q);
+      bankIndexById[q.id] = bank.length - 1;
+      applied++;
+    });
+    if (applied > 0) console.log('[Editor] تم تطبيق ' + applied + ' سؤال مُضاف محفوظ محلياً');
+  } catch(e){ console.warn('[Editor] فشل تطبيق الإضافات المحلية:', e); }
+}
+
+// فتح نافذة "إضافة سؤال جديد"
+function openAddQuestion(lessonName){
+  if (!editorMode) return;
+  var ctx = findLessonContext(lessonName);
+  if (!ctx){ toast('لم يتم العثور على الدرس في المنهج', 'err'); return; }
+  editorAddContext = ctx;
+
+  var body =
+    '<div class="ed-field">' +
+      '<div class="ed-ctx-info">' +
+        '<span class="ed-ctx-tag"><i class="fas fa-layer-group"></i> الفصل ' + ctx.sem + '</span>' +
+        '<span class="ed-ctx-tag"><i class="fas fa-cube"></i> وحدة ' + ctx.unitId + ': ' + ctx.unitName + '</span>' +
+        '<span class="ed-ctx-tag"><i class="fas fa-book"></i> ' + ctx.lesson + '</span>' +
+      '</div>' +
+      '<p class="editor-hint"><i class="fas fa-magic"></i> سيُضاف السؤال تلقائياً إلى نماذج الوحدة ' + ctx.unitId + ' والنماذج الوزارية.</p>' +
+    '</div>' +
+    '<div class="ed-field">' +
+      '<label class="ed-label">نص السؤال</label>' +
+      '<textarea id="ed-text" class="ed-textarea" rows="3" placeholder="اكتب نص السؤال هنا..."></textarea>' +
+    '</div>' +
+    '<div class="ed-field">' +
+      '<label class="ed-label">الخيارات (حدد الإجابة الصحيحة)</label>' +
+      '<div class="ed-opts">';
+  for (var j = 0; j < 4; j++){
+    body += '<div class="ed-opt-row">' +
+      '<label class="ed-opt-radio"><input type="radio" name="ed-answer" value="' + j + '" ' + (j === 0 ? 'checked' : '') + '> <span class="ed-opt-lbl">' + LBL[j] + '</span></label>' +
+      '<input type="text" class="ed-opt-input" id="ed-opt-' + j + '" placeholder="الخيار ' + LBL[j] + '">' +
+      '</div>';
+  }
+  body += '</div></div>' +
+    '<div class="ed-actions">' +
+      '<button class="ed-btn ed-btn-save" onclick="saveAddQuestion()">➕ إضافة السؤال</button>' +
+      '<button class="ed-btn ed-btn-cancel" onclick="closeEditorEdit()">إلغاء</button>' +
+    '</div>' +
+    '<p class="ed-note"><i class="fas fa-info-circle"></i> السؤال الجديد يُحفظ على هذا الجهاز أولاً. لتطبيقه نهائياً على الموقع، استخدم زر "تصدير البنك" من الشريط العلوي وارفع الملف الناتج لمستودع GitHub.</p>';
+
+  var bodyEl = document.getElementById('editor-edit-body');
+  if (bodyEl) bodyEl.innerHTML = body;
+
+  // تحديث عنوان النافذة
+  var titleEl = document.querySelector('#editor-edit-overlay .editor-modal-title');
+  if (titleEl) titleEl.innerHTML = '<i class="fas fa-plus-circle"></i> إضافة سؤال جديد';
+
+  var ov = document.getElementById('editor-edit-overlay');
+  if (ov) ov.classList.add('open');
+
+  // التركيز على حقل النص
+  setTimeout(function(){
+    var t = document.getElementById('ed-text');
+    if (t) t.focus();
+  }, 150);
+}
+
+function saveAddQuestion(){
+  if (!editorAddContext){ toast('خطأ: لا يوجد سياق للإضافة', 'err'); return; }
+  var ctx = editorAddContext;
+
+  var textEl = document.getElementById('ed-text');
+  var newText = textEl ? textEl.value.trim() : '';
+  if (!newText){ toast('نص السؤال لا يمكن أن يكون فارغاً', 'err'); textEl.focus(); return; }
+
+  var newOpts = [];
+  for (var j = 0; j < 4; j++){
+    var el = document.getElementById('ed-opt-' + j);
+    newOpts.push(el ? el.value.trim() : '');
+  }
+  // جميع الخيارات الأربعة يجب أن تكون مملوءة
+  for (var k = 0; k < newOpts.length; k++){
+    if (!newOpts[k]){
+      toast('الخيار ' + LBL[k] + ' لا يمكن أن يكون فارغاً', 'err');
+      var emptyEl = document.getElementById('ed-opt-' + k);
+      if (emptyEl) emptyEl.focus();
+      return;
+    }
+  }
+
+  var radio = document.querySelector('input[name="ed-answer"]:checked');
+  var newAnswer = radio ? parseInt(radio.value, 10) : 0;
+  if (isNaN(newAnswer) || newAnswer < 0 || newAnswer >= newOpts.length) newAnswer = 0;
+
+  // توليد ID جديد (أعلى id موجود + 1)
+  var maxId = 0;
+  for (var i = 0; i < bank.length; i++){ if (bank[i].id > maxId) maxId = bank[i].id; }
+  var newId = maxId + 1;
+
+  // إنشاء كائن السؤال
+  var newQ = {
+    id: newId,
+    sem: ctx.sem,
+    unit: ctx.unitId,
+    unitName: ctx.unitName,
+    lesson: ctx.lesson,
+    text: newText,
+    options: newOpts,
+    answer: newAnswer,
+    _examKey: ''
+  };
+
+  // إضافة إلى البنك في الذاكرة
+  bank.push(newQ);
+  bankIndexById[newId] = bank.length - 1;
+
+  // حفظ في localStorage
+  var raw = localStorage.getItem('qbank_additions');
+  var additions = raw ? JSON.parse(raw) : [];
+  if (!Array.isArray(additions)) additions = [];
+  additions.push(newQ);
+  localStorage.setItem('qbank_additions', JSON.stringify(additions));
+
+  closeEditorEdit();
+  editorAddContext = null;
+  toast('✅ تمت إضافة السؤال (رقم ' + newId + ') — سيظهر في نماذج الوحدة ' + ctx.unitId + ' والوزارية', 'ok');
+
+  // إعادة عرض الصفحة الحالية لرؤية السؤال الجديد
+  refreshCurrentPage();
 }
 
 // تفعيل/إيقاف وضع المحرر
@@ -203,6 +363,14 @@ function openEditorEdit(questionId){
 
   var bodyEl = document.getElementById('editor-edit-body');
   if (bodyEl) bodyEl.innerHTML = body;
+
+  // تحديث عنوان النافذة (لإعادة ضبطه إذا كانت مفتوحة سابقاً في وضع "إضافة")
+  var titleEl = document.querySelector('#editor-edit-overlay .editor-modal-title');
+  if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit"></i> تحرير السؤال';
+
+  // إعادة ضبط سياق الإضافة (لأننا الآن في وضع تحرير)
+  editorAddContext = null;
+
   var ov = document.getElementById('editor-edit-overlay');
   if (ov) ov.classList.add('open');
 }
@@ -210,6 +378,7 @@ function openEditorEdit(questionId){
 function closeEditorEdit(){
   var ov = document.getElementById('editor-edit-overlay');
   if (ov) ov.classList.remove('open');
+  editorAddContext = null;
 }
 
 function saveEditorEdit(questionId){
@@ -335,17 +504,34 @@ function escHtml(s){
 // ══════════════════════════════════════════════
 
 // نماذج الوحدات: كل نموذج 20 سؤال بالترتيب
+// الأسئلة الزائدة (أقل من 10) تُلحق بالنموذج الأخير بدلاً من إهمالها
 function getUnitModels(unitId) {
   var qs = bank.filter(function(q){ return q.unit === unitId && !q._examKey; });
   var models = [];
-  for (var i = 0; i < qs.length; i += 20) {
-    var slice = qs.slice(i, i + 20);
-    if (slice.length >= 10) models.push(slice); // نموذج إذا فيه 10 على الأقل
+  var i = 0;
+  // إنشاء نماذج كاملة بحجم 20
+  for (i = 0; i + 20 <= qs.length; i += 20) {
+    models.push(qs.slice(i, i + 20));
+  }
+  // معالجة الأسئلة المتبقية
+  var leftover = qs.slice(i);
+  if (leftover.length > 0) {
+    if (models.length === 0) {
+      // لا توجد نماذج كاملة، أضف الجزء المتبقي كنموذج (حتى لو صغير)
+      models.push(leftover);
+    } else if (leftover.length >= 10) {
+      // كافٍ لنموذج جديد
+      models.push(leftover);
+    } else {
+      // إلحاق بالنموذج الأخير (حتى يظهر السؤال الجديد فوراً)
+      models[models.length - 1] = models[models.length - 1].concat(leftover);
+    }
   }
   return models;
 }
 
 // نماذج وزارية: 40 سؤال موزعة على الوحدات بالتساوي
+// الأسئلة الزائدة عن الحصص تُوزَّع على المجموعات الموجودة (round-robin)
 function getMinisterialModels() {
   var unitIds = [1,2,3,4,5,6,7,8,9];
   var total = 40;
@@ -357,7 +543,7 @@ function getMinisterialModels() {
     return base + (i < extra ? 1 : 0);
   });
 
-  // تقسيم أسئلة كل وحدة إلى مجموعات بحجم الحصة
+  // تقسيم أسئلة كل وحدة إلى مجموعات بحجم الحصة + توزيع البواقي
   var unitGroups = {};
   var minModels = Infinity;
 
@@ -365,9 +551,21 @@ function getMinisterialModels() {
     var qs = bank.filter(function(q){ return q.unit === uid && !q._examKey; });
     var quota = quotas[i];
     var groups = [];
-    for (var j = 0; j < qs.length; j += quota) {
-      var g = qs.slice(j, j + quota);
-      if (g.length === quota) groups.push(g); // فقط مجموعات مكتملة
+    var j = 0;
+    // مجموعات كاملة
+    for (j = 0; j + quota <= qs.length; j += quota) {
+      groups.push(qs.slice(j, j + quota));
+    }
+    // الأسئلة المتبقية — توزيع round-robin على المجموعات الموجودة
+    var leftover = qs.slice(j);
+    if (leftover.length > 0 && groups.length > 0) {
+      for (var k = 0; k < leftover.length; k++) {
+        var targetGroup = k % groups.length;
+        groups[targetGroup] = groups[targetGroup].concat([leftover[k]]);
+      }
+    } else if (leftover.length > 0 && groups.length === 0) {
+      // الوحدة كلها أقل من الحصة — مجموعة واحدة صغيرة
+      groups.push(leftover);
     }
     unitGroups[uid] = groups;
     if (groups.length === 0) { minModels = 0; }
@@ -376,14 +574,15 @@ function getMinisterialModels() {
 
   if (minModels === 0) return [];
 
-  // بناء النماذج: كل نموذج يجمع سؤال من كل وحدة
+  // بناء النماذج: كل نموذج يجمع مجموعة من كل وحدة
   var models = [];
   for (var m = 0; m < minModels; m++) {
     var mqs = [];
     unitIds.forEach(function(uid) {
       if (unitGroups[uid][m]) mqs = mqs.concat(unitGroups[uid][m]);
     });
-    if (mqs.length === 40) models.push(mqs);
+    // نقبل النماذج التي تحتوي على 36 سؤالاً فأكثر (بدل اشتراط 40 بالضبط)
+    if (mqs.length >= 36) models.push(mqs);
   }
   return models;
 }
@@ -511,11 +710,18 @@ function showLessonAction(lesson, unitName) {
   var box = document.createElement('div');
   box.id = 'lesson-action-box';
   box.className = 'action-box';
+  // زر إضافة سؤال يظهر فقط في وضع المحرر
+  var addBtn = editorMode
+    ? '<button class="btn-add-q" onclick="openAddQuestion(\''+esc(lesson)+'\')"><i class="fas fa-plus-circle"></i> إضافة سؤال للدرس</button>'
+    : '';
   box.innerHTML =
     '<div class="ab-lesson"><i class="fas fa-file-alt"></i> '+lesson+'</div>' +
     '<div class="ab-unit">'+unitName+'</div>' +
     '<div class="ab-cnt">'+cnt+' سؤال متاح</div>' +
-    '<button class="btn-launch" onclick="launchLessonQuiz(\''+esc(lesson)+'\')">🚀 ابدأ الاختبار</button>';
+    '<div class="ab-actions">' +
+      '<button class="btn-launch" onclick="launchLessonQuiz(\''+esc(lesson)+'\')">🚀 ابدأ الاختبار</button>' +
+      addBtn +
+    '</div>';
   document.getElementById('sem-lessons-area').appendChild(box);
   box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
