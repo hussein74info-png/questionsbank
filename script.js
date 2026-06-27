@@ -28,6 +28,309 @@ var pageHistory = [];
 var currentPageId = 'start';
 
 // ══════════════════════════════════════════════
+//  وضع المحرر (Editor Mode) — تفعيل بكلمة مرور
+// ══════════════════════════════════════════════
+// كلمة المرور — يمكنك تغييرها هنا فقط (لا تظهر للزائر العادي)
+var EDITOR_PASSWORD = 'hussein2024';
+
+// حالة وضع المحرر
+var editorMode = false;
+
+// فهرس سريع لكل سؤال في البنك برقمه id
+function buildBankIndex(){
+  var idx = {};
+  for (var i = 0; i < bank.length; i++) idx[bank[i].id] = i;
+  return idx;
+}
+var bankIndexById = buildBankIndex();
+
+// تطبيق أي تعديلات محفوظة محلياً على البنك
+function applyLocalOverrides(){
+  try {
+    var raw = localStorage.getItem('qbank_overrides');
+    if (!raw) return;
+    var overrides = JSON.parse(raw);
+    if (!overrides || typeof overrides !== 'object') return;
+    var applied = 0;
+    Object.keys(overrides).forEach(function(idStr){
+      var idx = bankIndexById[parseInt(idStr, 10)];
+      if (idx === undefined) return;
+      var ov = overrides[idStr];
+      if (ov.text !== undefined) bank[idx].text = ov.text;
+      if (Array.isArray(ov.options)) bank[idx].options = ov.options.slice();
+      if (typeof ov.answer === 'number') bank[idx].answer = ov.answer;
+      if (ov.lesson !== undefined) bank[idx].lesson = ov.lesson;
+      applied++;
+    });
+    if (applied > 0) console.log('[Editor] تم تطبيق ' + applied + ' تعديل محفوظ محلياً');
+  } catch(e){ console.warn('[Editor] فشل تطبيق التعديلات المحلية:', e); }
+}
+
+// حفظ تعديل سؤال في localStorage
+function saveOverride(questionId, patch){
+  var raw = localStorage.getItem('qbank_overrides');
+  var overrides = raw ? JSON.parse(raw) : {};
+  if (!overrides[questionId]) overrides[questionId] = {};
+  if (patch.text !== undefined) overrides[questionId].text = patch.text;
+  if (patch.options !== undefined) overrides[questionId].options = patch.options.slice();
+  if (patch.answer !== undefined) overrides[questionId].answer = patch.answer;
+  if (patch.lesson !== undefined) overrides[questionId].lesson = patch.lesson;
+  localStorage.setItem('qbank_overrides', JSON.stringify(overrides));
+}
+
+// حذف كل التعديلات المحفوظة (reset)
+function clearAllOverrides(){
+  localStorage.removeItem('qbank_overrides');
+}
+
+// تفعيل/إيقاف وضع المحرر
+function toggleEditorMode(){
+  if (editorMode){
+    // إيقاف
+    editorMode = false;
+    localStorage.removeItem('qbank_editor_active');
+    document.body.classList.remove('editor-on');
+    updateEditorBtnUI();
+    toast('تم إيقاف وضع المحرر', 'ok');
+    // إعادة عرض الصفحة الحالية بدون أزرار التحرير
+    refreshCurrentPage();
+  } else {
+    // التحقق إن كان مفعّلاً سابقاً على هذا الجهاز
+    if (localStorage.getItem('qbank_editor_active') === '1'){
+      editorMode = true;
+      document.body.classList.add('editor-on');
+      updateEditorBtnUI();
+      toast('وضع المحرر مُفعّل', 'ok');
+      refreshCurrentPage();
+    } else {
+      // طلب كلمة المرور
+      openEditorPwd();
+    }
+  }
+}
+
+function updateEditorBtnUI(){
+  var btn = document.getElementById('btn-editor');
+  if (!btn) return;
+  if (editorMode){
+    btn.classList.add('active');
+    btn.innerHTML = '<i class="fas fa-unlock"></i> <span id="btn-editor-text">وضع المحرر</span>';
+    // إضافة زر التصدير في الشريط
+    var nb = document.getElementById('navbar');
+    if (nb && !document.getElementById('btn-export')){
+      var ex = document.createElement('button');
+      ex.id = 'btn-export';
+      ex.className = 'nb-export';
+      ex.innerHTML = '<i class="fas fa-download"></i> تصدير';
+      ex.onclick = exportBank;
+      nb.appendChild(ex);
+    }
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = '<i class="fas fa-lock"></i> <span id="btn-editor-text">وضع المحرر</span>';
+    // إزالة زر التصدير من الشريط
+    var ex = document.getElementById('btn-export');
+    if (ex) ex.remove();
+  }
+}
+
+// نافذة كلمة المرور
+function openEditorPwd(){
+  var ov = document.getElementById('editor-pwd-overlay');
+  if (!ov) return;
+  ov.classList.add('open');
+  var inp = document.getElementById('editor-pwd-input');
+  if (inp){ inp.value = ''; setTimeout(function(){ inp.focus(); }, 100); }
+  var err = document.getElementById('editor-pwd-err');
+  if (err) err.style.display = 'none';
+}
+function closeEditorPwd(){
+  var ov = document.getElementById('editor-pwd-overlay');
+  if (ov) ov.classList.remove('open');
+}
+function submitEditorPwd(){
+  var inp = document.getElementById('editor-pwd-input');
+  var err = document.getElementById('editor-pwd-err');
+  if (!inp) return;
+  var val = inp.value;
+  if (val === EDITOR_PASSWORD){
+    editorMode = true;
+    localStorage.setItem('qbank_editor_active', '1');
+    document.body.classList.add('editor-on');
+    closeEditorPwd();
+    updateEditorBtnUI();
+    toast('✅ تم تفعيل وضع المحرر', 'ok');
+    refreshCurrentPage();
+  } else {
+    if (err){ err.style.display = 'block'; }
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+// نافذة تحرير السؤال
+function openEditorEdit(questionId){
+  if (!editorMode) return;
+  var idx = bankIndexById[questionId];
+  if (idx === undefined){ toast('السؤال غير موجود', 'err'); return; }
+  var q = bank[idx];
+
+  var body =
+    '<div class="ed-field">' +
+      '<label class="ed-label">نص السؤال</label>' +
+      '<textarea id="ed-text" class="ed-textarea" rows="3">' + escHtml(q.text) + '</textarea>' +
+    '</div>' +
+    '<div class="ed-field">' +
+      '<label class="ed-label">الخيارات (الإجابة الصحيحة محددة)</label>' +
+      '<div class="ed-opts">';
+  for (var j = 0; j < (q.options || []).length; j++){
+    var isAns = (j === q.answer);
+    body += '<div class="ed-opt-row">' +
+      '<label class="ed-opt-radio"><input type="radio" name="ed-answer" value="' + j + '" ' + (isAns ? 'checked' : '') + '> <span class="ed-opt-lbl">' + LBL[j] + '</span></label>' +
+      '<input type="text" class="ed-opt-input" id="ed-opt-' + j + '" value="' + escHtml(q.options[j] || '') + '">' +
+      '</div>';
+  }
+  body += '</div></div>' +
+    '<div class="ed-field">' +
+      '<label class="ed-label">الدرس (اختياري)</label>' +
+      '<input type="text" id="ed-lesson" class="ed-input" value="' + escHtml(q.lesson || '') + '">' +
+    '</div>' +
+    '<div class="ed-actions">' +
+      '<button class="ed-btn ed-btn-save" onclick="saveEditorEdit(' + questionId + ')">💾 حفظ التعديل</button>' +
+      '<button class="ed-btn ed-btn-cancel" onclick="closeEditorEdit()">إلغاء</button>' +
+    '</div>' +
+    '<p class="ed-note"><i class="fas fa-info-circle"></i> التعديل يُحفظ على هذا الجهاز. لتطبيقه نهائياً للموقع، استخدم زر "تصدير البنك" من الشريط العلوي.</p>';
+
+  var bodyEl = document.getElementById('editor-edit-body');
+  if (bodyEl) bodyEl.innerHTML = body;
+  var ov = document.getElementById('editor-edit-overlay');
+  if (ov) ov.classList.add('open');
+}
+
+function closeEditorEdit(){
+  var ov = document.getElementById('editor-edit-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+function saveEditorEdit(questionId){
+  var idx = bankIndexById[questionId];
+  if (idx === undefined){ toast('السؤال غير موجود', 'err'); return; }
+  var q = bank[idx];
+
+  var textEl = document.getElementById('ed-text');
+  var lessonEl = document.getElementById('ed-lesson');
+  var newText = textEl ? textEl.value.trim() : q.text;
+  var newLesson = lessonEl ? lessonEl.value.trim() : (q.lesson || '');
+
+  // قراءة الخيارات
+  var newOpts = [];
+  for (var j = 0; j < (q.options || []).length; j++){
+    var el = document.getElementById('ed-opt-' + j);
+    newOpts.push(el ? el.value : '');
+  }
+  // قراءة الإجابة الصحيحة
+  var radio = document.querySelector('input[name="ed-answer"]:checked');
+  var newAnswer = radio ? parseInt(radio.value, 10) : q.answer;
+  if (isNaN(newAnswer) || newAnswer < 0 || newAnswer >= newOpts.length) newAnswer = q.answer;
+
+  // التحقق: لا يمكن أن يكون هناك خيار فارغ في موقع الإجابة
+  if (!newOpts[newAnswer] || !newOpts[newAnswer].trim()){
+    toast('الإجابة الصحيحة لا يمكن أن تكون فارغة', 'err');
+    return;
+  }
+
+  // تطبيق التعديل على البنك في الذاكرة
+  q.text = newText;
+  q.options = newOpts;
+  q.answer = newAnswer;
+  q.lesson = newLesson;
+
+  // حفظ في localStorage
+  saveOverride(questionId, { text: newText, options: newOpts, answer: newAnswer, lesson: newLesson });
+
+  closeEditorEdit();
+  toast('✅ تم حفظ التعديل', 'ok');
+
+  // إعادة عرض الصفحة الحالية لرؤية التغيير
+  refreshCurrentPage();
+}
+
+// إعادة عرض الصفحة الحالية
+function refreshCurrentPage(){
+  if (currentPageId === 'quiz'){
+    // إعادة عرض الاختبار مع الحفاظ على إجابات المستخدم
+    var savedAnswers = userAnswers;
+    renderQuiz();
+    userAnswers = savedAnswers;
+    // إعادة تطبيق الاختيارات السابقة بصرياً
+    Object.keys(userAnswers).forEach(function(qi){
+      var q = currentQuiz[parseInt(qi, 10)];
+      if (!q) return;
+      var vi = validInfo(q);
+      var oi = userAnswers[qi];
+      if (currentMode === 'train'){
+        // إعادة عرض حالة التدريب
+        for (var j = 0; j < vi.opts.length; j++){
+          var el = document.getElementById('qopt-' + qi + '-' + j);
+          if (!el) continue;
+          el.classList.add('locked');
+          if (j === vi.answerIdx) el.classList.add('correct');
+          else if (j === oi && oi !== vi.answerIdx) el.classList.add('wrong');
+        }
+        var card = document.getElementById('qcard-' + qi);
+        if (card) card.classList.add(oi === vi.answerIdx ? 'q-correct' : 'q-wrong');
+        var fb = document.getElementById('qfb-' + qi);
+        if (fb){
+          fb.style.display = 'block';
+          var ok = oi === vi.answerIdx;
+          fb.className = 'qfb ' + (ok ? 'fb-ok' : 'fb-err');
+          fb.innerHTML = ok ? '✅ إجابة صحيحة! أحسنت.' : '❌ خطأ — الصحيح: <strong>' + LBL[vi.answerIdx] + ' — ' + vi.opts[vi.answerIdx] + '</strong>';
+        }
+      } else {
+        var sel = document.getElementById('qopt-' + qi + '-' + oi);
+        if (sel) sel.className = 'qopt exam-sel';
+      }
+    });
+    updProgress(Object.keys(userAnswers).length);
+    updQNav();
+  } else if (currentPageId === 'result' && currentMode === 'exam'){
+    showResults();
+  } else {
+    // للصفحات الأخرى، إعادة عرضها
+    switch (currentPageId){
+      case 'home': renderHome(); break;
+      case 'lessons': renderLessonPage(); break;
+      case 'units': renderUnitPage(); break;
+      case 'ministerial': renderMinisterialPage(); break;
+      case 'exams': renderExamPage(); break;
+    }
+  }
+}
+
+// تصدير البنك المُعدَّل كملف JavaScript جديد
+function exportBank(){
+  var content = 'var bank = ' + JSON.stringify(bank, null, 2) + ';\n';
+  var blob = new Blob([content], { type: 'application/javascript' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'questions.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast('📦 تم تنزيل questions.js المُعدَّل', 'ok');
+}
+
+function escHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ══════════════════════════════════════════════
 //  توليد النماذج الثابتة
 // ══════════════════════════════════════════════
 
@@ -108,6 +411,10 @@ function showPage(id) {
   // زر خريطة الأسئلة
   var qnb = document.getElementById('qnav-btn');
   if (qnb) qnb.style.display = (id==='quiz' && currentQuiz.length > 5) ? 'flex' : 'none';
+
+  // زر وضع المحرر — يظهر دائماً بعد صفحة البداية (لمن يملك كلمة المرور فقط)
+  var eb = document.getElementById('btn-editor');
+  if (eb) eb.style.display = (id==='start') ? 'none' : 'inline-flex';
 
   // تحديث عنوان الشريط
   var titles = {
@@ -393,8 +700,10 @@ function renderQuiz() {
 
   currentQuiz.forEach(function(q,i){
     var vi = validInfo(q);
+    // زر التحرير — يظهر فقط في وضع المحرر
+    var editBtn = editorMode ? '<button class="qedit-btn" onclick="event.stopPropagation();openEditorEdit('+q.id+')" title="تحرير هذا السؤال"><i class="fas fa-edit"></i></button>' : '';
     html += '<div class="qcard" id="qcard-'+i+'">' +
-      '<div class="qcard-top"><span class="qbadge">س'+(i+1)+'</span><span class="qmeta">'+(q.lesson||'')+'</span></div>' +
+      '<div class="qcard-top"><span class="qbadge">س'+(i+1)+'</span><span class="qmeta">'+(q.lesson||'')+'</span>' + editBtn + '</div>' +
       '<div class="qtext">'+q.text+'</div><div class="qopts">';
     vi.opts.forEach(function(opt,j){
       html += '<div class="qopt" id="qopt-'+i+'-'+j+'" onclick="pick('+i+','+j+')">' +
@@ -590,7 +899,8 @@ function buildReview() {
     var ans=userAnswers[i], skip=ans===undefined, ok=!skip&&ans===correctIdx;
     var sc=skip?'rs':ok?'rok':'rerr';
     var st=skip?'⏭ لم تُجب':ok?'✅ صحيحة':'❌ خاطئة';
-    html+='<div class="rcard '+sc+'"><div class="rcard-hdr"><span class="rbadge">س'+(i+1)+'</span><span class="rstatus">'+st+'</span></div>' +
+    var editBtn = editorMode ? '<button class="qedit-btn redit-btn" onclick="event.stopPropagation();openEditorEdit('+q.id+')" title="تحرير هذا السؤال"><i class="fas fa-edit"></i></button>' : '';
+    html+='<div class="rcard '+sc+'"><div class="rcard-hdr"><span class="rbadge">س'+(i+1)+'</span><span class="rstatus">'+st+'</span>'+editBtn+'</div>' +
       '<div class="rqtext">'+q.text+'</div><div class="ropts">';
     vi.opts.forEach(function(o,j){
       var lc=j===correctIdx?'rlbl-ok':j===ans&&!ok&&!skip?'rlbl-err':'';

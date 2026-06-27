@@ -29,6 +29,9 @@
     <button id="qnav-btn" class="nb-qnav" onclick="toggleQNav()" style="display:none">
       <i class="fas fa-th"></i> خريطة
     </button>
+    <button id="btn-editor" class="nb-editor" onclick="toggleEditorMode()">
+      <i class="fas fa-lock"></i> <span id="btn-editor-text">وضع المحرر</span>
+    </button>
     <button id="btn-home" onclick="goHome()" style="display:none">🏠 الرئيسية</button>
   </div>
 
@@ -107,14 +110,52 @@
   </div>
 </div>
 
+<!-- EDITOR: PASSWORD MODAL -->
+<div id="editor-pwd-overlay" class="editor-overlay">
+  <div class="editor-modal editor-pwd-modal">
+    <div class="editor-modal-head">
+      <span class="editor-modal-title"><i class="fas fa-shield-alt"></i> وضع المحرر</span>
+      <button class="editor-modal-close" onclick="closeEditorPwd()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="editor-modal-body">
+      <p class="editor-hint">أدخل كلمة المرور لتفعيل وضع تحرير الأسئلة:</p>
+      <input type="password" id="editor-pwd-input" class="editor-input" placeholder="كلمة المرور" autocomplete="off">
+      <p id="editor-pwd-err" class="editor-err" style="display:none">كلمة المرور غير صحيحة</p>
+      <button class="editor-btn-primary" onclick="submitEditorPwd()">🔐 تفعيل</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR: QUESTION EDIT MODAL -->
+<div id="editor-edit-overlay" class="editor-overlay">
+  <div class="editor-modal editor-edit-modal">
+    <div class="editor-modal-head">
+      <span class="editor-modal-title"><i class="fas fa-edit"></i> تحرير السؤال</span>
+      <button class="editor-modal-close" onclick="closeEditorEdit()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="editor-modal-body" id="editor-edit-body">
+      <!-- يتم ملؤها ديناميكياً من script.js -->
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div id="toast-box" class="toast-box"></div>
 
 <script src="questions.js"></script>
 <script src="script.js"></script>
 <script>
+  // تطبيق أي تعديلات محفوظة محلياً قبل عرض الصفحة
+  applyLocalOverrides();
+  // استعادة حالة وضع المحرر إذا كان مفعّلاً سابقاً على هذا الجهاز
+  if (localStorage.getItem('qbank_editor_active') === '1'){
+    editorMode = true;
+    document.body.classList.add('editor-on');
+  }
   // Show start page on load
   showPage('start');
+  // تحديث واجهة زر المحرر بعد تحميل الصفحة
+  setTimeout(function(){ updateEditorBtnUI(); }, 50);
 </script>
 </body>
 </html>

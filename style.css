@@ -309,3 +309,104 @@ header strong{color:#e8c96a;}
 
 /* تحسين بسيط لتنسيق العناوين داخل البطاقات في النمط التدريبي */
 .qfb strong{font-weight:800;}
+
+/* ══════════════════════════════════════════════
+   وضع المحرر (Editor Mode)
+   ══════════════════════════════════════════════ */
+
+/* أزرار الشريط العلوي */
+.nb-editor,.nb-export{display:inline-flex;align-items:center;gap:5px;
+  border:1.5px solid var(--bd);border-radius:9px;padding:7px 12px;
+  font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;
+  background:#fff;color:var(--pr);cursor:pointer;transition:all .15s;}
+.nb-editor:active{background:var(--f1b);}
+.nb-editor.active{background:var(--gold);color:#fff;border-color:var(--gold);}
+.nb-export{background:var(--gr);color:#fff;border-color:var(--gr);}
+.nb-export:active{opacity:.85;}
+
+/* شارة صغيرة على body عندما يكون وضع المحرر مفعّلاً */
+body.editor-on .app{box-shadow:0 4px 30px rgba(200,168,75,.35);}
+body.editor-on::before{content:'🔒 وضع المحرر مُفعّل';position:fixed;top:0;right:0;
+  background:var(--gold);color:#fff;font-size:10px;font-weight:700;
+  padding:3px 9px;border-radius:0 0 0 8px;z-index:999;pointer-events:none;}
+
+/* زر التحرير بجانب كل سؤال */
+.qedit-btn{margin-right:auto;background:#fff;border:1.5px solid var(--gold);
+  border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;
+  color:var(--gold);cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+  flex-shrink:0;transition:all .15s;}
+.qedit-btn:active{background:var(--gold);color:#fff;}
+.qedit-btn:hover{background:var(--gold);color:#fff;}
+.reedit-btn{margin-right:0;margin-right:6px;}
+
+/* النوافذ المنبثقة العامة (overlay) */
+.editor-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;
+  display:flex;justify-content:center;align-items:center;
+  opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;padding:14px;}
+.editor-overlay.open{opacity:1;visibility:visible;}
+
+/* النافذة نفسها */
+.editor-modal{background:#fff;border-radius:14px;width:100%;max-width:520px;
+  max-height:90vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);
+  transform:translateY(15px);transition:transform .25s;}
+.editor-overlay.open .editor-modal{transform:translateY(0);}
+.editor-pwd-modal{max-width:380px;}
+
+/* رأس النافذة */
+.editor-modal-head{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--bd);
+  background:linear-gradient(135deg,var(--pr),var(--pl));color:#fff;
+  border-radius:14px 14px 0 0;}
+.editor-modal-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;}
+.editor-modal-close{background:rgba(255,255,255,.18);border:none;color:#fff;
+  width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:13px;
+  display:flex;align-items:center;justify-content:center;}
+.editor-modal-close:active{background:rgba(255,255,255,.32);}
+
+/* جسم النافذة */
+.editor-modal-body{padding:16px;}
+
+/* حقول الإدخال */
+.editor-hint{font-size:13px;color:var(--mu);margin-bottom:11px;line-height:1.6;}
+.editor-input,.ed-input,.ed-textarea,.ed-opt-input{
+  width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:9px;
+  font-family:'Tajawal',sans-serif;font-size:13px;color:var(--pr);
+  background:#fff;transition:border-color .15s;}
+.editor-input:focus,.ed-input:focus,.ed-textarea:focus,.ed-opt-input:focus{
+  outline:none;border-color:var(--pr);}
+.ed-textarea{resize:vertical;min-height:70px;line-height:1.6;}
+.editor-err{color:var(--rd);font-size:12px;font-weight:700;margin-top:8px;
+  background:#fde2e2;padding:7px 11px;border-radius:7px;border:1px solid var(--rd);}
+.editor-btn-primary{display:block;width:100%;margin-top:13px;padding:12px;
+  background:linear-gradient(135deg,var(--pr),var(--pl));color:#fff;border:none;
+  border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;}
+.editor-btn-primary:active{opacity:.9;}
+
+/* الحقول داخل نافذة التحرير */
+.ed-field{margin-bottom:13px;}
+.ed-label{display:block;font-size:12px;font-weight:700;color:var(--pr);margin-bottom:6px;}
+.ed-opts{display:flex;flex-direction:column;gap:8px;}
+.ed-opt-row{display:flex;align-items:center;gap:9px;}
+.ed-opt-radio{display:flex;align-items:center;gap:6px;cursor:pointer;
+  flex-shrink:0;width:46px;font-size:13px;font-weight:700;color:var(--pr);}
+.ed-opt-radio input{margin:0;cursor:pointer;width:16px;height:16px;}
+.ed-opt-lbl{display:inline-block;background:var(--f1b);color:var(--pr);
+  border-radius:5px;padding:1px 7px;font-size:11px;font-weight:800;}
+.ed-opt-input{flex:1;}
+.ed-actions{display:flex;gap:9px;margin-top:15px;}
+.ed-btn{flex:1;padding:11px;border:none;border-radius:10px;
+  font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;}
+.ed-btn-save{background:linear-gradient(135deg,var(--gr),#1e6b4a);color:#fff;}
+.ed-btn-save:active{opacity:.9;}
+.ed-btn-cancel{background:#f0ede5;color:var(--mu);border:1.5px solid var(--bd);}
+.ed-btn-cancel:active{background:var(--bd);}
+.ed-note{font-size:11px;color:var(--mu);line-height:1.6;margin-top:13px;
+  background:#faf9f4;padding:9px 11px;border-radius:7px;border:1px dashed var(--bd);}
+.ed-note i{color:var(--gold);margin-left:4px;}
+
+@media(max-width:480px){
+  .editor-modal{max-width:100%;}
+  .ed-opt-row{flex-wrap:wrap;}
+  .ed-opt-radio{width:auto;}
+}
